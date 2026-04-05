@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NoteVault — Notes</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .note-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .note-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: linear-gradient(to bottom, var(--accent), var(--accent2));
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .note-card:hover { border-color: rgba(124,106,255,0.3); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .note-card:hover::before { opacity: 1; }
+
+    .note-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note-content {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .note-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .note-author { font-size: 0.75rem; font-weight: 700; color: var(--text-dim); }
+    .note-date { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text-dim); }
+
+    .note-actions {
+      display: flex;
+      gap: 0.4rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .note-card:hover .note-actions { opacity: 1; }
+
+    .search-bar {
+      position: relative;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .search-bar input {
+      padding-left: 2.2rem;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .note-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">⬡ NoteVault</a>
+    <ul class="nav-links">
+      <li><a href="/">Dashboard</a></li>
+      <li><a href="/notes" class="active">Notes</a></li>
+      <li><a href="/users">Users</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="page-header">
+      <div>
+        <h2>All Notes</h2>
+        <p class="muted mt-1" style="font-size:0.9rem;">Create and manage your notes</p>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('create-modal')">✏️ New Note</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Search notes..." oninput="filterNotes()" />
+      </div>
+      <span class="note-count" id="note-count">Loading...</span>
+    </div>
+
+    <div class="grid-2" id="notes-grid">
+      <div class="card empty-state"><p>Loading notes...</p></div>
+    </div>
+  </main>
+
+  <!-- Create Modal -->
+  <div class="modal-overlay" id="create-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>New Note</h3>
+        <button class="btn btn-ghost" style="padding:0.3rem 0.6rem;" onclick="closeModal('create-modal')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="note-title" placeholder="Enter note title..." />
+      </div>
+      <div class="form-group">
+        <label>Author</label>
+        <input type="text" id="note-author" placeholder="Your name..." />
+      </div>
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="note-content" rows="5" placeholder="Write your note here..."></textarea>
+      </div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+        <button class="btn btn-ghost" onclick="closeModal('create-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="createNote()">Create Note</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Edit Note</h3>
+        <button class="btn btn-ghost" style="padding:0.3rem 0.6rem;" onclick="closeModal('edit-modal')">✕</button>
+      </div>
+      <input type="hidden" id="edit-note-id" />
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="edit-note-title" />
+      </div>
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="edit-note-content" rows="5"></textarea>
+      </div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+        <button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <script src="app.js"></script>
+  <script>
+    let allNotes = [];
+
+    async function loadNotes() {
+      try {
+        const res = await fetch('/api/notes');
+        allNotes = await res.json();
+        renderNotes(allNotes);
+      } catch (e) {
+        showToast('Failed to load notes', 'error');
+      }
+    }
+
+    function renderNotes(notes) {
+      const grid = document.getElementById('notes-grid');
+      document.getElementById('note-count').textContent = `${notes.length} note${notes.length !== 1 ? 's' : ''}`;
+
+      if (!notes.length) {
+        grid.innerHTML = `
+          <div class="card empty-state" style="grid-column:1/-1">
+            <div class="icon">📭</div>
+            <h3>No notes yet</h3>
+            <p>Click "New Note" to create your first note</p>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = notes.map(n => `
+        <div class="note-card fade-up" id="note-${n.id}">
+          <div class="note-title">${escapeHtml(n.title)}</div>
+          <div class="note-content">${escapeHtml(n.content)}</div>
+          <div class="note-meta">
+            <div>
+              <span class="badge badge-accent">${escapeHtml(n.author)}</span>
+              <span class="note-date" style="margin-left:0.5rem;">${formatDate(n.created_at)}</span>
+            </div>
+            <div class="note-actions">
+              <button class="btn btn-ghost" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="openEdit(${n.id}, '${escapeJs(n.title)}', '${escapeJs(n.content)}')">✏️</button>
+              <button class="btn btn-danger" style="padding:0.3rem 0.6rem; font-size:0.8rem;" onclick="deleteNote(${n.id})">🗑</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterNotes() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const filtered = allNotes.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        n.content.toLowerCase().includes(q) ||
+        n.author.toLowerCase().includes(q)
+      );
+      renderNotes(filtered);
+    }
+
+    async function createNote() {
+      const title = document.getElementById('note-title').value.trim();
+      const author = document.getElementById('note-author').value.trim();
+      const content = document.getElementById('note-content').value.trim();
+
+      if (!title || !author || !content) return showToast('All fields are required', 'error');
+
+      try {
+        const res = await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, author, content })
+        });
+        const note = await res.json();
+        if (!res.ok) return showToast(note.error, 'error');
+
+        allNotes.unshift(note);
+        renderNotes(allNotes);
+        closeModal('create-modal');
+        document.getElementById('note-title').value = '';
+        document.getElementById('note-author').value = '';
+        document.getElementById('note-content').value = '';
+        showToast('Note created! ✨');
+      } catch (e) {
+        showToast('Failed to create note', 'error');
+      }
+    }
+
+    async function deleteNote(id) {
+      if (!confirm('Delete this note?')) return;
+      try {
+        const res = await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+        if (!res.ok) return showToast('Failed to delete', 'error');
+        allNotes = allNotes.filter(n => n.id !== id);
+        renderNotes(allNotes);
+        showToast('Note deleted');
+      } catch (e) {
+        showToast('Failed to delete note', 'error');
+      }
+    }
+
+    function openEdit(id, title, content) {
+      document.getElementById('edit-note-id').value = id;
+      document.getElementById('edit-note-title').value = title;
+      document.getElementById('edit-note-content').value = content;
+      openModal('edit-modal');
+    }
+
+    async function saveEdit() {
+      const id = document.getElementById('edit-note-id').value;
+      const title = document.getElementById('edit-note-title').value.trim();
+      const content = document.getElementById('edit-note-content').value.trim();
+
+      if (!title || !content) return showToast('Fields required', 'error');
+
+      try {
+        const res = await fetch(`/api/notes/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content })
+        });
+        const updated = await res.json();
+        allNotes = allNotes.map(n => n.id == id ? updated : n);
+        renderNotes(allNotes);
+        closeModal('edit-modal');
+        showToast('Note updated ✓');
+      } catch (e) {
+        showToast('Failed to update', 'error');
+      }
+    }
+
+    function escapeJs(str) {
+      return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+    }
+
+    loadNotes();
+  </script>
+</body>
+</html>
