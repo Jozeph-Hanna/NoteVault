@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ⬡ NoteVault — Full-Stack App
 
 A clean, full-stack web application built with:
@@ -99,3 +100,6 @@ CREATE TABLE users (
   created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
+=======
+# NoteVault
+>>>>>>> 95e64c7ffeaedc9efcfa03ff0968f169f8dbe8f2
